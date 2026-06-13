@@ -2,15 +2,15 @@ Hisaab - Shared Expense & Settlement Management System
 A full stack expense splitting platform (Spring Boot + vanilla JS) that lets groups track shared expenses, automatically calculates running balances, and computes minimum transaction settlement plans like a self built Splitwise.
 Features
 
-JWT Authentication — secure registration/login with BCrypt password hashing
-Group & Expense Management — create groups, add members by email, log shared expenses
-My Groups & My Balances — personalized views of all groups a user belongs to, and what they owe/are owed across all groups
-Transactional Integrity — expense creation, share calculation, balance updates, and audit logging happen atomically (@Transactional)
-Settlement Engine — greedy min-heap algorithm computes minimum number of payments needed to settle all debts (O(n log n))
-Optimistic Locking — @Version field on balance records prevents race conditions during concurrent updates, validated via concurrent-thread tests
-Recurring Expenses — Spring Scheduler auto-creates monthly bills (rent, etc.)
-Audit Logging — tracks all expense changes with before/after JSON snapshots
-Caching — cache-aside pattern for group summaries (in-memory, Redis-ready)
+JWT Authentication -> secure registration/login with BCrypt password hashing
+Group & Expense Management -> create groups, add members by email, log shared expenses
+My Groups & My Balances -> personalized views of all groups a user belongs to, and what they owe/are owed across all groups
+Transactional Integrity -> expense creation, share calculation, balance updates, and audit logging happen atomically (@Transactional)
+Settlement Engine -> greedy min-heap algorithm computes minimum number of payments needed to settle all debts (O(n log n))
+Optimistic Locking -> @Version field on balance records prevents race conditions during concurrent updates, validated via concurrent-thread tests
+Recurring Expenses -> Spring Scheduler auto-creates monthly bills (rent, etc.)
+Audit Logging -> tracks all expense changes with before/after JSON snapshots
+Caching -> cache-aside pattern for group summaries (in-memory, Redis-ready)
 Practical, whole rupee splitting equal splits round to whole rupees with remainder adjustment, since Indian currency has no usable decimal denominations
 
 Tech Stack
