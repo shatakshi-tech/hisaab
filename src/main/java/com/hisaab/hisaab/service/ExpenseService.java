@@ -34,6 +34,9 @@ public class ExpenseService {
     @Autowired
     private AuditService auditService;
 
+    @Autowired
+    private GroupSummaryService groupSummaryService;
+
     @Transactional
     public ExpenseResponse addExpense(AddExpenseRequest request) {
 
@@ -77,6 +80,7 @@ public class ExpenseService {
                 updateBalance(group, participant, paidBy, shareAmount);
             }
         }
+        groupSummaryService.evictSummaryCache(group.getId());
 
         // 6. Return response
         return new ExpenseResponse(
