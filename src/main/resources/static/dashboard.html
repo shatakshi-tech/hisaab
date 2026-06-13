@@ -25,10 +25,14 @@
         <button onclick="createGroup()">Create Group</button>
         <p id="groupMsg"></p>
 
+        <h2>My Groups</h2>
+        <button onclick="loadMyGroups()">Refresh My Groups</button>
+        <div id="myGroupsResult" style="margin-top:10px;"></div>
+
         <h2>Add Member to Group</h2>
         <input type="number" id="memberGroupId" placeholder="Group ID">
-        <input type="number" id="memberUserId" placeholder="User ID to add">
-        <button onclick="addMember()">Add Member</button>
+        <input type="email" id="memberEmail" placeholder="Friend's email">
+        <button onclick="addMemberByEmail()">Add Member</button>
         <p id="memberMsg"></p>
     </div>
 
@@ -67,6 +71,7 @@
     requireAuth();
     document.getElementById('userName').textContent = sessionStorage.getItem('userName');
     document.getElementById('userId').textContent = sessionStorage.getItem('userId');
+    loadMyGroups();
 
     function showTab(tab, btn) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -79,6 +84,7 @@
         if (tab === 'myBalances') {
             loadMyBalances();
         }
+        loadMyGroups();
     }
 
     // ----- CREATE GROUP -----
@@ -97,6 +103,7 @@
                 const data = await res.json();
                 msg.className = 'success';
                 msg.textContent = `Group created! ID: ${data.id}`;
+                loadMyGroups();
             } else {
                 msg.className = 'error';
                 msg.textContent = 'Failed to create group';
@@ -108,30 +115,68 @@
     }
 
     // ----- ADD MEMBER -----
-    async function addMember() {
-        const groupId = document.getElementById('memberGroupId').value;
-        const userId = document.getElementById('memberUserId').value;
-        const msg = document.getElementById('memberMsg');
+
+    async function loadMyGroups() {
+        const userId = sessionStorage.getItem('userId');
+        const resultDiv = document.getElementById('myGroupsResult');
 
         try {
-            const res = await fetch(`${API_BASE}/groups/${groupId}/members/${userId}`, {
-                method: 'POST',
+            const res = await fetch(`${API_BASE}/groups/my-groups/${userId}`, {
+                method: 'GET',
                 headers: authHeaders()
             });
 
+            if (!res.ok) {
+                resultDiv.innerHTML = `<p class="error">Failed to load groups</p>`;
+                return;
+            }
+
+            const data = await res.json();
+
+            if (data.length === 0) {
+                resultDiv.innerHTML = `<p>You're not part of any group yet.</p>`;
+                return;
+            }
+
+            let html = `<table><tr><th>Group ID</th><th>Name</th></tr>`;
+            data.forEach(g => {
+                html += `<tr><td>${g.id}</td><td>${g.name}</td></tr>`;
+            });
+            html += `</table>`;
+
+            resultDiv.innerHTML = html;
+        } catch (e) {
+            resultDiv.innerHTML = `<p class="error">Error: ${e.message}</p>`;
+        }
+    }
+
+    // ----- ADD MEMBER BY EMAIL -----
+    async function addMemberByEmail() {
+        const groupId = document.getElementById('memberGroupId').value;
+        const email = document.getElementById('memberEmail').value;
+        const msg = document.getElementById('memberMsg');
+
+        try {
+            const res = await fetch(`${API_BASE}/groups/${groupId}/members/by-email`, {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({ email })
+            });
+
+            const data = await res.json();
+
             if (res.ok) {
                 msg.className = 'success';
-                msg.textContent = `User ${userId} added to group ${groupId}`;
+                msg.textContent = data.message;
             } else {
                 msg.className = 'error';
-                msg.textContent = 'Failed to add member';
+                msg.textContent = data.error || 'Failed to add member';
             }
         } catch (e) {
             msg.className = 'error';
             msg.textContent = 'Error: ' + e.message;
         }
     }
-
     // ----- ADD EXPENSE -----
     async function addExpense() {
         const description = document.getElementById('expDescription').value;

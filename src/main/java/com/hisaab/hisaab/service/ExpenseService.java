@@ -55,17 +55,33 @@ public class ExpenseService {
         expense.setPaidBy(paidBy);
         expense.setCategory(request.getCategory());
         expense = expenseRepository.save(expense);
+
+        // Audit log: record expense creation
         auditService.log(paidBy, "EXPENSE_CREATED", "Expense", expense.getId(), null, expense);
 
-        // 3. Calculate equal split
+        // 3. Calculate equal split — whole rupees only (Indian currency has no usable decimals)
         int participantCount = request.getParticipantIds().size();
-        BigDecimal shareAmount = request.getAmount()
-                .divide(BigDecimal.valueOf(participantCount), 2, RoundingMode.HALF_UP);
+
+        BigDecimal baseShare = request.getAmount()
+                .divide(BigDecimal.valueOf(participantCount), 0, RoundingMode.DOWN);
+
+        BigDecimal totalAllocated = baseShare.multiply(BigDecimal.valueOf(participantCount));
+        BigDecimal remainder = request.getAmount().subtract(totalAllocated);
+        // remainder will be a whole number like ₹0, ₹1, or ₹2
 
         // 4. Create ExpenseShare for each participant
-        for (Long participantId : request.getParticipantIds()) {
+        List<Long> participantIds = request.getParticipantIds();
+        for (int i = 0; i < participantIds.size(); i++) {
+            Long participantId = participantIds.get(i);
+
             User participant = userRepository.findById(participantId)
                     .orElseThrow(() -> new RuntimeException("Participant not found: " + participantId));
+
+            BigDecimal shareAmount = baseShare;
+            // Give the rounding remainder (₹0–2) to the LAST participant
+            if (i == participantIds.size() - 1) {
+                shareAmount = shareAmount.add(remainder);
+            }
 
             ExpenseShare share = new ExpenseShare();
             share.setExpense(expense);
@@ -80,9 +96,11 @@ public class ExpenseService {
                 updateBalance(group, participant, paidBy, shareAmount);
             }
         }
+
+        // 6. Evict cached group summary so next read recomputes fresh data
         groupSummaryService.evictSummaryCache(group.getId());
 
-        // 6. Return response
+        // 7. Return response
         return new ExpenseResponse(
                 expense.getId(),
                 expense.getDescription(),
