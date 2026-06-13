@@ -31,6 +31,9 @@ public class ExpenseService {
     @Autowired
     private GroupRepository groupRepository;
 
+    @Autowired
+    private AuditService auditService;
+
     @Transactional
     public ExpenseResponse addExpense(AddExpenseRequest request) {
 
@@ -49,6 +52,7 @@ public class ExpenseService {
         expense.setPaidBy(paidBy);
         expense.setCategory(request.getCategory());
         expense = expenseRepository.save(expense);
+        auditService.log(paidBy, "EXPENSE_CREATED", "Expense", expense.getId(), null, expense);
 
         // 3. Calculate equal split
         int participantCount = request.getParticipantIds().size();
