@@ -5,11 +5,17 @@ import com.hisaab.hisaab.entity.User;
 import com.hisaab.hisaab.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+
 
     @Autowired
     private UserRepository userRepository;
@@ -19,8 +25,8 @@ public class UserController {
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
-        user.setPassword(request.getPassword());
-        User saved = userRepository.save(user);
+        user.setPassword(passwordEncoder.encode(request.getPassword())); // encode FIRST
+        User saved = userRepository.save(user); // THEN save
         return ResponseEntity.ok(saved);
     }
 
