@@ -19,8 +19,6 @@ public class UserController {
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
-        // NOTE: storing plain text password for now — we'll add password hashing
-        // when we build Spring Security in a later phase
         user.setPassword(request.getPassword());
         User saved = userRepository.save(user);
         return ResponseEntity.ok(saved);
