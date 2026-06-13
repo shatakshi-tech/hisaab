@@ -3,7 +3,9 @@ A full stack expense splitting platform (Spring Boot + vanilla JS) that lets gro
 Features
 
 JWT Authentication -> secure registration/login with BCrypt password hashing
+
 Group & Expense Management -> create groups, add members by email, log shared expenses
+
 My Groups & My Balances -> personalized views of all groups a user belongs to, and what they owe/are owed across all groups
 Transactional Integrity -> expense creation, share calculation, balance updates, and audit logging happen atomically (@Transactional)
 Settlement Engine -> greedy min-heap algorithm computes minimum number of payments needed to settle all debts (O(n log n))
