@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hisaab - Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <h1>Hisaab</h1>
+    <p style="color:#666; margin-bottom:16px;">Shared expense tracker</p>
+
+    <div class="tab-buttons">
+        <button id="loginTabBtn" class="active" onclick="showTab('login')">Login</button>
+        <button id="registerTabBtn" onclick="showTab('register')">Register</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="loginTab" class="tab-content active">
+        <h2>Login</h2>
+        <input type="email" id="loginEmail" placeholder="Email">
+        <input type="password" id="loginPassword" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <p id="loginMsg"></p>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="registerTab" class="tab-content">
+        <h2>Register</h2>
+        <input type="text" id="regName" placeholder="Name">
+        <input type="email" id="regEmail" placeholder="Email">
+        <input type="password" id="regPassword" placeholder="Password">
+        <button onclick="register()">Register</button>
+        <p id="registerMsg"></p>
+    </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+    function showTab(tab) {
+        document.getElementById('loginTab').classList.remove('active');
+        document.getElementById('registerTab').classList.remove('active');
+        document.getElementById('loginTabBtn').classList.remove('active');
+        document.getElementById('registerTabBtn').classList.remove('active');
+
+        document.getElementById(tab + 'Tab').classList.add('active');
+        document.getElementById(tab + 'TabBtn').classList.add('active');
+    }
+
+    async function register() {
+        const name = document.getElementById('regName').value;
+        const email = document.getElementById('regEmail').value;
+        const password = document.getElementById('regPassword').value;
+        const msg = document.getElementById('registerMsg');
+
+        try {
+            const res = await fetch(`${API_BASE}/users/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password })
+            });
+
+            if (res.ok) {
+                msg.className = 'success';
+                msg.textContent = 'Registered successfully! Please login.';
+                showTab('login');
+            } else {
+                const err = await res.json();
+                msg.className = 'error';
+                msg.textContent = err.error || 'Registration failed';
+            }
+        } catch (e) {
+            msg.className = 'error';
+            msg.textContent = 'Network error: ' + e.message;
+        }
+    }
+
+    async function login() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        const msg = document.getElementById('loginMsg');
+
+        try {
+            const res = await fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                sessionStorage.setItem('token', data.token);
+                sessionStorage.setItem('userId', data.userId);
+                sessionStorage.setItem('userName', data.name);
+                window.location.href = 'dashboard.html';
+            } else {
+                const err = await res.json();
+                msg.className = 'error';
+                msg.textContent = err.error || 'Login failed';
+            }
+        } catch (e) {
+            msg.className = 'error';
+            msg.textContent = 'Network error: ' + e.message;
+        }
+    }
+</script>
+</body>
+</html>

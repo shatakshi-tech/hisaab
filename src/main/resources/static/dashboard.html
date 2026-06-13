@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hisaab - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <button id="logoutBtn" onclick="logout()">Logout</button>
+    <h1>Hisaab Dashboard</h1>
+    <p>Welcome, <span id="userName"></span> (User ID: <span id="userId"></span>)</p>
+
+    <div class="tab-buttons">
+        <button class="active" onclick="showTab('groups')">Groups</button>
+        <button onclick="showTab('addExpense')">Add Expense</button>
+        <button onclick="showTab('summary')">Summary</button>
+    </div>
+
+    <!-- GROUPS TAB -->
+    <div id="groupsTab" class="tab-content active">
+        <h2>Create Group</h2>
+        <input type="text" id="groupName" placeholder="Group name (e.g., Flat 302)">
+        <button onclick="createGroup()">Create Group</button>
+        <p id="groupMsg"></p>
+
+        <h2>Add Member to Group</h2>
+        <input type="number" id="memberGroupId" placeholder="Group ID">
+        <input type="number" id="memberUserId" placeholder="User ID to add">
+        <button onclick="addMember()">Add Member</button>
+        <p id="memberMsg"></p>
+    </div>
+
+    <!-- ADD EXPENSE TAB -->
+    <div id="addExpenseTab" class="tab-content">
+        <h2>Add Expense</h2>
+        <input type="text" id="expDescription" placeholder="Description (e.g., Groceries)">
+        <input type="number" id="expAmount" placeholder="Amount (₹)">
+        <input type="number" id="expGroupId" placeholder="Group ID">
+        <input type="number" id="expPaidById" placeholder="Paid By (User ID)">
+        <input type="text" id="expCategory" placeholder="Category (e.g., Food)">
+        <input type="text" id="expParticipants" placeholder="Participant User IDs (comma-separated, e.g., 1,2,3)">
+        <button onclick="addExpense()">Add Expense</button>
+        <p id="expenseMsg"></p>
+    </div>
+
+    <!-- SUMMARY TAB -->
+    <div id="summaryTab" class="tab-content">
+        <h2>Group Summary</h2>
+        <input type="number" id="summaryGroupId" placeholder="Group ID">
+        <button onclick="loadSummary()">Load Summary</button>
+
+        <div id="summaryResult" style="margin-top:16px;"></div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+    requireAuth();
+    document.getElementById('userName').textContent = sessionStorage.getItem('userName');
+    document.getElementById('userId').textContent = sessionStorage.getItem('userId');
+
+    function showTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-buttons button').forEach(el => el.classList.remove('active'));
+
+        document.getElementById(tab + 'Tab').classList.add('active');
+        event.target.classList.add('active');
+    }
+
+    // ----- CREATE GROUP -----
+    async function createGroup() {
+        const name = document.getElementById('groupName').value;
+        const msg = document.getElementById('groupMsg');
+
+        try {
+            const res = await fetch(`${API_BASE}/groups`, {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({ name, createdByUserId: parseInt(sessionStorage.getItem('userId')) })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                msg.className = 'success';
+                msg.textContent = `Group created! ID: ${data.id}`;
+            } else {
+                msg.className = 'error';
+                msg.textContent = 'Failed to create group';
+            }
+        } catch (e) {
+            msg.className = 'error';
+            msg.textContent = 'Error: ' + e.message;
+        }
+    }
+
+    // ----- ADD MEMBER -----
+    async function addMember() {
+        const groupId = document.getElementById('memberGroupId').value;
+        const userId = document.getElementById('memberUserId').value;
+        const msg = document.getElementById('memberMsg');
+
+        try {
+            const res = await fetch(`${API_BASE}/groups/${groupId}/members/${userId}`, {
+                method: 'POST',
+                headers: authHeaders()
+            });
+
+            if (res.ok) {
+                msg.className = 'success';
+                msg.textContent = `User ${userId} added to group ${groupId}`;
+            } else {
+                msg.className = 'error';
+                msg.textContent = 'Failed to add member';
+            }
+        } catch (e) {
+            msg.className = 'error';
+            msg.textContent = 'Error: ' + e.message;
+        }
+    }
+
+    // ----- ADD EXPENSE -----
+    async function addExpense() {
+        const description = document.getElementById('expDescription').value;
+        const amount = parseFloat(document.getElementById('expAmount').value);
+        const groupId = parseInt(document.getElementById('expGroupId').value);
+        const paidById = parseInt(document.getElementById('expPaidById').value);
+        const category = document.getElementById('expCategory').value;
+        const participantIds = document.getElementById('expParticipants').value
+            .split(',').map(s => parseInt(s.trim()));
+
+        const msg = document.getElementById('expenseMsg');
+
+        try {
+            const res = await fetch(`${API_BASE}/expenses`, {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({ description, amount, groupId, paidById, category, participantIds })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                msg.className = 'success';
+                msg.textContent = `Expense added! "${data.description}" - ₹${data.amount}`;
+            } else {
+                msg.className = 'error';
+                msg.textContent = 'Failed to add expense';
+            }
+        } catch (e) {
+            msg.className = 'error';
+            msg.textContent = 'Error: ' + e.message;
+        }
+    }
+
+    // ----- LOAD SUMMARY -----
+    async function loadSummary() {
+        const groupId = document.getElementById('summaryGroupId').value;
+        const resultDiv = document.getElementById('summaryResult');
+
+        try {
+            const res = await fetch(`${API_BASE}/groups/${groupId}/summary`, {
+                method: 'GET',
+                headers: authHeaders()
+            });
+
+            if (!res.ok) {
+                resultDiv.innerHTML = `<p class="error">Failed to load summary</p>`;
+                return;
+            }
+
+            const data = await res.json();
+
+            let html = `
+                <div class="card">
+                    <h3>${data.groupName}</h3>
+                    <p><strong>Total Expenses:</strong> ₹${data.totalExpenses}</p>
+                </div>
+                <h3>Settlements (who owes whom)</h3>
+            `;
+
+            if (data.settlements.length === 0) {
+                html += `<p>Everyone is settled up! 🎉</p>`;
+            } else {
+                html += `<table><tr><th>From</th><th>To</th><th>Amount</th></tr>`;
+                data.settlements.forEach(s => {
+                    html += `<tr><td>${s.fromUserName}</td><td>${s.toUserName}</td><td>₹${s.amount}</td></tr>`;
+                });
+                html += `</table>`;
+            }
+
+            resultDiv.innerHTML = html;
+        } catch (e) {
+            resultDiv.innerHTML = `<p class="error">Error: ${e.message}</p>`;
+        }
+    }
+</script>
+</body>
+</html>
