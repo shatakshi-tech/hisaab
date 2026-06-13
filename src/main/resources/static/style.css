@@ -43,8 +43,8 @@ button:hover { background: #3a3780; }
     margin: 10px 0;
 }
 
-.tab-buttons { display: flex; gap: 8px; margin-bottom: 16px; }
-.tab-buttons button { background: #ddd; color: #333; }
+.tab-buttons { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.tab-buttons button { background: #ddd; color: #333; width: auto; flex: 1; }
 .tab-buttons button.active { background: #4a47a3; color: white; }
 
 .tab-content { display: none; }

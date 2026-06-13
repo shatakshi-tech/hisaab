@@ -1,6 +1,7 @@
 package com.hisaab.hisaab.service;
 
 import com.hisaab.hisaab.dto.SettlementResponse;
+import com.hisaab.hisaab.dto.UserBalanceResponse;
 import com.hisaab.hisaab.entity.Balance;
 import com.hisaab.hisaab.entity.User;
 import com.hisaab.hisaab.repository.BalanceRepository;
@@ -17,33 +18,29 @@ public class SettlementService {
     private BalanceRepository balanceRepository;
 
     public List<SettlementResponse> getSettlements(Long groupId) {
-
+        // ... existing code unchanged ...
         List<Balance> balances = balanceRepository.findByGroupId(groupId);
 
-        // Step 1: Compute net balance per user
-        // net[user] = total owed TO them - total they owe
         Map<Long, BigDecimal> net = new HashMap<>();
-        Map<Long, User> userMap = new HashMap<>(); // to retrieve User objects for names
+        Map<Long, User> userMap = new HashMap<>();
 
         for (Balance b : balances) {
             Long owedByUserId = b.getOwedBy().getId();
             Long owedToUserId = b.getOwedTo().getId();
             BigDecimal amount = b.getAmount();
 
-            net.merge(owedByUserId, amount.negate(), BigDecimal::add); // debtor: -amount
-            net.merge(owedToUserId, amount, BigDecimal::add);          // creditor: +amount
+            net.merge(owedByUserId, amount.negate(), BigDecimal::add);
+            net.merge(owedToUserId, amount, BigDecimal::add);
 
             userMap.putIfAbsent(owedByUserId, b.getOwedBy());
             userMap.putIfAbsent(owedToUserId, b.getOwedTo());
         }
 
-        // Step 2: Separate into creditors (net > 0) and debtors (net < 0)
-        // Use max-heaps (PriorityQueue) for greedy matching
         PriorityQueue<Map.Entry<Long, BigDecimal>> creditors =
-                new PriorityQueue<>((a, b) -> b.getValue().compareTo(a.getValue())); // max-heap
+                new PriorityQueue<>((a, b) -> b.getValue().compareTo(a.getValue()));
 
         PriorityQueue<Map.Entry<Long, BigDecimal>> debtors =
-                new PriorityQueue<>((a, b) -> a.getValue().compareTo(b.getValue())); // min-heap (most negative first)
+                new PriorityQueue<>((a, b) -> a.getValue().compareTo(b.getValue()));
 
         for (Map.Entry<Long, BigDecimal> entry : net.entrySet()) {
             if (entry.getValue().compareTo(BigDecimal.ZERO) > 0) {
@@ -51,18 +48,16 @@ public class SettlementService {
             } else if (entry.getValue().compareTo(BigDecimal.ZERO) < 0) {
                 debtors.add(entry);
             }
-            // net == 0 means user is already settled, skip
         }
 
-        // Step 3: Greedily match largest debtor with largest creditor
         List<SettlementResponse> result = new ArrayList<>();
 
         while (!debtors.isEmpty() && !creditors.isEmpty()) {
             Map.Entry<Long, BigDecimal> debtor = debtors.poll();
             Map.Entry<Long, BigDecimal> creditor = creditors.poll();
 
-            BigDecimal debtAmount = debtor.getValue().abs();   // how much debtor owes overall
-            BigDecimal creditAmount = creditor.getValue();      // how much creditor is owed overall
+            BigDecimal debtAmount = debtor.getValue().abs();
+            BigDecimal creditAmount = creditor.getValue();
 
             BigDecimal settleAmount = debtAmount.min(creditAmount);
 
@@ -75,7 +70,6 @@ public class SettlementService {
                     settleAmount
             ));
 
-            // Update remaining balances
             BigDecimal remainingDebt = debtAmount.subtract(settleAmount);
             BigDecimal remainingCredit = creditAmount.subtract(settleAmount);
 
@@ -85,6 +79,31 @@ public class SettlementService {
             if (remainingCredit.compareTo(BigDecimal.ZERO) > 0) {
                 creditors.add(Map.entry(creditor.getKey(), remainingCredit));
             }
+        }
+
+        return result;
+    }
+
+    // NEW METHOD
+    public List<UserBalanceResponse> getUserBalances(Long userId) {
+        List<UserBalanceResponse> result = new ArrayList<>();
+
+        // Balances where this user OWES someone
+        for (Balance b : balanceRepository.findByOwedById(userId)) {
+            result.add(new UserBalanceResponse(
+                    b.getGroup().getId(), b.getGroup().getName(),
+                    b.getOwedTo().getId(), b.getOwedTo().getName(),
+                    b.getAmount(), "YOU_OWE"
+            ));
+        }
+
+        // Balances where someone OWES this user
+        for (Balance b : balanceRepository.findByOwedToId(userId)) {
+            result.add(new UserBalanceResponse(
+                    b.getGroup().getId(), b.getGroup().getName(),
+                    b.getOwedBy().getId(), b.getOwedBy().getName(),
+                    b.getAmount(), "OWES_YOU"
+            ));
         }
 
         return result;
